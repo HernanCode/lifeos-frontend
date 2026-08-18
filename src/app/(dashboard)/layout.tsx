@@ -1,13 +1,23 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { DashboardProvider } from '@/components/dashboard-provider'
 import { Sidebar } from '@/components/sidebar'
 import { Topbar } from '@/components/topbar'
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const router = useRouter()
+
+  useEffect(() => {
+    function onLogout() {
+      router.push('/login')
+    }
+    window.addEventListener('auth:logout', onLogout)
+    return () => window.removeEventListener('auth:logout', onLogout)
+  }, [router])
 
   return (
     <DashboardProvider>

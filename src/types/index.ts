@@ -58,10 +58,24 @@ export interface HabitLog {
   updated_at: string;
 }
 
+export interface Project {
+  id: number;
+  user_id: number;
+  name: string;
+  description: string | null;
+  status: 'active' | 'paused' | 'completed' | 'archived';
+  color: string | null;
+  due_date: string | null;
+  tasks?: Task[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Task {
   id: number;
   user_id: number;
   goal_id: number | null;
+  project_id: number | null;
   title: string;
   description: string | null;
   status: 'todo' | 'doing' | 'done';
@@ -69,6 +83,7 @@ export interface Task {
   is_important: boolean;
   due_date: string | null;
   goal?: Goal;
+  project?: Project;
   created_at: string;
   updated_at: string;
 }
@@ -77,7 +92,9 @@ export interface Task {
 export type CreateLifeAreaDto = Pick<LifeArea, 'name' | 'color'> & { icon?: string };
 export type CreateGoalDto = Pick<Goal, 'life_area_id' | 'title' | 'specific' | 'measurable' | 'achievable_note' | 'relevant_note' | 'deadline'>;
 export type CreateHabitDto = Pick<Habit, 'title' | 'frequency' | 'target_count'> & { goal_id?: number };
-export type CreateTaskDto = Pick<Task, 'title' | 'is_urgent' | 'is_important'> & { goal_id?: number; description?: string; due_date?: string };
+export type CreateTaskDto = Pick<Task, 'title' | 'is_urgent' | 'is_important'> & { goal_id?: number; project_id?: number | null; description?: string; due_date?: string };
+export type CreateProjectDto = Pick<Project, 'name'> & { description?: string; status?: Project['status']; color?: string | null; due_date?: string | null };
 
 export type UpdateTaskDto = Partial<CreateTaskDto> & { status?: Task['status'] };
 export type UpdateGoalDto = Partial<CreateGoalDto> & { status?: Goal['status'] };
+export type UpdateProjectDto = Partial<CreateProjectDto>;

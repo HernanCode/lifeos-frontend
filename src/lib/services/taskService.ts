@@ -2,8 +2,12 @@ import api from '@/lib/api';
 import type { Task, CreateTaskDto, UpdateTaskDto } from '@/types';
 
 export const taskService = {
-  async getAll(filters?: { status?: string; is_urgent?: boolean; is_important?: boolean }): Promise<Task[]> {
-    const response = await api.get<Task[]>('/tasks', { params: filters });
+  async getAll(filters?: { status?: string; is_urgent?: boolean; is_important?: boolean; project_id?: number | null }): Promise<Task[]> {
+    const params: Record<string, unknown> = { ...filters };
+    if (filters?.project_id === null) {
+      params.project_id = '';
+    }
+    const response = await api.get<Task[]>('/tasks', { params });
     return response.data;
   },
 

@@ -6,9 +6,24 @@ import { Sparkles, Zap, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NAV_ITEMS } from '@/lib/app-data'
 import { ProgressBar } from '@/components/progress-bar'
+import { useDashboard } from '@/components/dashboard-provider'
+import {
+  habitWeek,
+  habitStreak,
+} from '@/lib/habit-utils'
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname()
+  const { habits, isLoadingHabits } = useDashboard()
+
+  const activeHabits = habits.filter((h) => h.is_active)
+  const weeklyDone = activeHabits.filter((h) => {
+    const week = habitWeek(h)
+    return week.some(Boolean)
+  }).length
+  const totalWeekly = activeHabits.length
+  const weeklyPct = totalWeekly > 0 ? Math.round((weeklyDone / totalWeekly) * 100) : 0
+  const totalStreak = activeHabits.reduce((s, h) => s + habitStreak(h), 0)
 
   return (
     <>
@@ -22,7 +37,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-72 flex-col gap-6 border-r border-sidebar-border bg-sidebar p-5 transition-transform duration-300 lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-72 flex-col gap-6 border-r border-sidebar-border bg-sidebar p-5 transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:self-start lg:overflow-y-auto lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -86,11 +101,19 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               <Sparkles className="size-4" />
               <p className="text-sm font-semibold">Racha semanal</p>
             </div>
-            <p className="mt-2 text-3xl font-extrabold">6 días</p>
-            <p className="text-xs text-white/80">¡Estás en racha! Sigue así.</p>
+            <p className="mt-2 text-3xl font-extrabold">
+              {isLoadingHabits ? '—' : `${weeklyDone}/${totalWeekly}`}
+            </p>
+            <p className="text-xs text-white/80">
+              {totalWeekly === 0
+                ? 'Agregá hábitos para empezar.'
+                : totalStreak > 0
+                  ? `${totalStreak} días de racha total. ¡Seguí así!`
+                  : '¡Empezá tu primera racha hoy!'}
+            </p>
             <div className="mt-3">
               <ProgressBar
-                value={85}
+                value={weeklyPct}
                 accent="green"
                 trackClassName="bg-white/25"
                 className="bg-white"

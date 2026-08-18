@@ -82,7 +82,16 @@ export function HabitModal({ habit, onClose }: { habit: Habit | null; onClose: (
               <option value="custom">Personalizada</option>
             </Select>
           </Field>
-          <Field label="Objetivo" htmlFor="habit-target">
+          <Field
+            label={
+              frequency === 'weekly'
+                ? 'Veces por semana'
+                : frequency === 'daily'
+                  ? 'Veces al día'
+                  : 'Objetivo'
+            }
+            htmlFor="habit-target"
+          >
             <TextInput
               id="habit-target"
               type="number"
@@ -92,6 +101,12 @@ export function HabitModal({ habit, onClose }: { habit: Habit | null; onClose: (
             />
           </Field>
         </div>
+
+        {frequency === 'weekly' && (
+          <p className="-mt-2 text-xs text-muted-foreground">
+            Cuántas veces querés hacer esto por semana. Marcá los días que lo hagas en la grilla.
+          </p>
+        )}
 
         <Field label="Meta" htmlFor="habit-goal">
           <Select id="habit-goal" value={goalId} onChange={(e) => setGoalId(e.target.value)}>

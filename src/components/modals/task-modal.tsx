@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Field, Select, TextArea, TextInput, Toggle } from '@/components/ui/form'
 
-export function TaskModal({ task, onClose }: { task: Task | null; onClose: () => void }) {
-  const { goals, createTask, updateTask } = useDashboard()
+export function TaskModal({ task, onClose, defaultProjectId }: { task: Task | null; onClose: () => void; defaultProjectId?: number | null }) {
+  const { goals, projects, createTask, updateTask } = useDashboard()
   const isEditing = task !== null
   const [submitting, setSubmitting] = useState(false)
 
@@ -17,6 +17,9 @@ export function TaskModal({ task, onClose }: { task: Task | null; onClose: () =>
   const [status, setStatus] = useState<Task['status']>(task?.status ?? 'todo')
   const [goalId, setGoalId] = useState(
     task?.goal_id != null ? String(task.goal_id) : '',
+  )
+  const [projectId, setProjectId] = useState(
+    task?.project_id != null ? String(task.project_id) : defaultProjectId != null ? String(defaultProjectId) : '',
   )
   const [dueDate, setDueDate] = useState(task?.due_date ?? '')
   const [isUrgent, setIsUrgent] = useState(task?.is_urgent ?? false)
@@ -33,6 +36,7 @@ export function TaskModal({ task, onClose }: { task: Task | null; onClose: () =>
         is_important: isImportant,
         ...(description ? { description } : {}),
         ...(goalId ? { goal_id: Number(goalId) } : {}),
+        ...(projectId ? { project_id: Number(projectId) } : { project_id: null }),
         ...(dueDate ? { due_date: dueDate } : {}),
       }
       if (isEditing && task) {
@@ -109,6 +113,21 @@ export function TaskModal({ task, onClose }: { task: Task | null; onClose: () =>
             </Select>
           </Field>
         </div>
+
+        <Field label="Proyecto" htmlFor="task-project">
+          <Select
+            id="task-project"
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+          >
+            <option value="">Sin proyecto (tarea diaria)</option>
+            {projects.filter((p) => p.status === 'active').map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
         <Field label="Fecha límite" htmlFor="task-due">
           <TextInput

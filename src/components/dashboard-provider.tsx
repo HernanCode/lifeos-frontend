@@ -7,17 +7,21 @@ import type {
   CreateGoalDto,
   CreateHabitDto,
   CreateLifeAreaDto,
+  CreateProjectDto,
   CreateTaskDto,
   Goal,
   Habit,
   LifeArea,
+  Project,
   Task,
   UpdateGoalDto,
+  UpdateProjectDto,
   UpdateTaskDto,
 } from '@/types'
 import { goalService } from '@/lib/services/goalService'
 import { habitService } from '@/lib/services/habitService'
 import { lifeAreaService } from '@/lib/services/lifeAreaService'
+import { projectService } from '@/lib/services/projectService'
 import { taskService } from '@/lib/services/taskService'
 import { handleMutationError } from '@/lib/error-handler'
 import { dateDaysAgo, isHabitDoneOn } from '@/lib/habit-utils'
@@ -27,11 +31,14 @@ type DashboardContextValue = {
   goals: Goal[]
   habits: Habit[]
   lifeAreas: LifeArea[]
+  projects: Project[]
   isLoadingTasks: boolean
   isLoadingGoals: boolean
   isLoadingHabits: boolean
+  isLoadingProjects: boolean
   toggleTask: (id: number) => void
   toggleHabitDay: (id: number, dayIndex: number) => void
+  toggleHabitDate: (id: number, date: string) => void
   createTask: (data: CreateTaskDto) => Promise<void>
   updateTask: (id: number, data: UpdateTaskDto) => Promise<void>
   deleteTask: (id: number) => Promise<void>
@@ -44,6 +51,9 @@ type DashboardContextValue = {
     data: Partial<CreateHabitDto> & { is_active?: boolean },
   ) => Promise<void>
   deleteHabit: (id: number) => Promise<void>
+  createProject: (data: CreateProjectDto) => Promise<void>
+  updateProject: (id: number, data: UpdateProjectDto) => Promise<void>
+  deleteProject: (id: number) => Promise<void>
   createLifeArea: (data: CreateLifeAreaDto) => Promise<LifeArea>
 }
 
@@ -72,12 +82,17 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     queryFn: lifeAreaService.getAll,
   })
 
+  const projectsQuery = useQuery({
+    queryKey: ['projects'],
+    queryFn: projectService.getAll,
+  })
+
   const updateTaskMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateTaskDto }) =>
       taskService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      toast.success('Tarea actualizada')
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
     },
     onError: (e) => handleMutationError(e, 'No se pudo actualizar la tarea'),
   })
@@ -92,7 +107,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       completed: boolean
       date: string
     }) => habitService.toggle(id, completed, date),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['habits'] }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['habits'] })
+      toast.success(variables.completed ? 'Hábito marcado' : 'Hábito desmarcado')
+    },
     onError: (e) => handleMutationError(e, 'No se pudo actualizar el hábito'),
   })
 
@@ -100,6 +118,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     mutationFn: taskService.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
       toast.success('Tarea creada')
     },
     onError: (e) => handleMutationError(e, 'No se pudo crear la tarea'),
@@ -109,6 +128,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     mutationFn: taskService.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
       toast.success('Tarea eliminada')
     },
     onError: (e) => handleMutationError(e, 'No se pudo eliminar la tarea'),
@@ -175,6 +195,35 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     onError: (e) => handleMutationError(e, 'No se pudo eliminar el hábito'),
   })
 
+  const createProjectMutation = useMutation({
+    mutationFn: projectService.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      toast.success('Proyecto creado')
+    },
+    onError: (e) => handleMutationError(e, 'No se pudo crear el proyecto'),
+  })
+
+  const updateProjectMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateProjectDto }) =>
+      projectService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      toast.success('Proyecto actualizado')
+    },
+    onError: (e) => handleMutationError(e, 'No se pudo actualizar el proyecto'),
+  })
+
+  const deleteProjectMutation = useMutation({
+    mutationFn: projectService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] })
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      toast.success('Proyecto eliminado')
+    },
+    onError: (e) => handleMutationError(e, 'No se pudo eliminar el proyecto'),
+  })
+
   const createLifeAreaMutation = useMutation({
     mutationFn: lifeAreaService.create,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['life-areas'] }),
@@ -184,9 +233,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   function toggleTask(id: number) {
     const task = tasksQuery.data?.find((t) => t.id === id)
     if (!task) return
+    const willBeDone = task.status !== 'done'
     updateTaskMutation.mutate({
       id,
-      data: { status: task.status === 'done' ? 'todo' : 'done' },
+      data: { status: willBeDone ? 'done' : 'todo' },
+    }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['tasks'] })
+        toast.success(willBeDone ? 'Tarea completada' : 'Tarea reabierta')
+      },
     })
   }
 
@@ -194,6 +249,16 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const habit = habitsQuery.data?.find((h) => h.id === id)
     if (!habit) return
     const date = dateDaysAgo(6 - dayIndex)
+    toggleHabitMutation.mutate({
+      id,
+      completed: !isHabitDoneOn(habit, date),
+      date,
+    })
+  }
+
+  function toggleHabitDate(id: number, date: string) {
+    const habit = habitsQuery.data?.find((h) => h.id === id)
+    if (!habit) return
     toggleHabitMutation.mutate({
       id,
       completed: !isHabitDoneOn(habit, date),
@@ -231,6 +296,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   async function deleteHabit(id: number) {
     await deleteHabitMutation.mutateAsync(id)
   }
+  async function createProject(data: CreateProjectDto) {
+    await createProjectMutation.mutateAsync(data)
+  }
+  async function updateProject(id: number, data: UpdateProjectDto) {
+    await updateProjectMutation.mutateAsync({ id, data })
+  }
+  async function deleteProject(id: number) {
+    await deleteProjectMutation.mutateAsync(id)
+  }
 
   return (
     <DashboardContext.Provider
@@ -239,11 +313,14 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         goals: goalsQuery.data ?? [],
         habits: habitsQuery.data ?? [],
         lifeAreas: lifeAreasQuery.data ?? [],
+        projects: projectsQuery.data ?? [],
         isLoadingTasks: tasksQuery.isLoading,
         isLoadingGoals: goalsQuery.isLoading,
         isLoadingHabits: habitsQuery.isLoading,
+        isLoadingProjects: projectsQuery.isLoading,
         toggleTask,
         toggleHabitDay,
+        toggleHabitDate,
         createTask,
         updateTask,
         deleteTask,
@@ -253,6 +330,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         createHabit,
         updateHabit,
         deleteHabit,
+        createProject,
+        updateProject,
+        deleteProject,
         createLifeArea: (data) => createLifeAreaMutation.mutateAsync(data),
       }}
     >

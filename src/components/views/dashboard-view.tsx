@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { CheckCircle2, Flame, Target, TrendingUp } from 'lucide-react'
+import { CheckCircle2, ClipboardList, Flame, Target, TrendingUp } from 'lucide-react'
 import type { Goal, Habit, Task } from '@/types'
 import { habitStreak, habitWeek } from '@/lib/habit-utils'
 import { firstName, greeting, useCurrentUser } from '@/lib/user-utils'
@@ -126,28 +126,50 @@ export function DashboardView({
         <section className="lg:col-span-3">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-bold">Tareas de hoy</h2>
-            <span className="text-sm font-medium text-muted-foreground">
-              {doneTasks} de {tasks.length} hechas
-            </span>
+            {tasks.length > 0 && (
+              <span className="text-sm font-medium text-muted-foreground">
+                {doneTasks} de {tasks.length} hechas
+              </span>
+            )}
           </div>
-          <div className="mt-4 flex flex-col gap-2.5">
-            {tasks.map((task) => (
-              <TaskItem key={task.id} task={task} onToggle={onToggleTask} />
-            ))}
+          <div className="mt-4">
+            {tasks.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border p-5 text-muted-foreground">
+                <ClipboardList className="size-5 shrink-0" />
+                <p className="text-sm">No hay tareas. Creá una para empezar tu día.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {tasks.map((task) => (
+                  <TaskItem key={task.id} task={task} onToggle={onToggleTask} />
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
         <section className="lg:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-bold">Metas</h2>
-            <span className="text-sm font-medium text-muted-foreground">
-              {goals.length} en total
-            </span>
+            {goals.length > 0 && (
+              <span className="text-sm font-medium text-muted-foreground">
+                {goals.length} en total
+              </span>
+            )}
           </div>
-          <div className="mt-4 flex flex-col gap-4">
-            {goals.slice(0, 2).map((goal) => (
-              <GoalCard key={goal.id} goal={goal} />
-            ))}
+          <div className="mt-4">
+            {goals.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border p-5 text-muted-foreground">
+                <Target className="size-5 shrink-0" />
+                <p className="text-sm">No hay metas. Definí una para empezar a crecer.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {goals.slice(0, 2).map((goal) => (
+                  <GoalCard key={goal.id} goal={goal} />
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </div>
@@ -155,18 +177,29 @@ export function DashboardView({
       <section>
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold">Seguimiento de hábitos</h2>
-          <span className="text-sm font-medium text-muted-foreground">
-            {habitsDoneToday} de {activeHabits.length} hoy
-          </span>
+          {activeHabits.length > 0 && (
+            <span className="text-sm font-medium text-muted-foreground">
+              {habitsDoneToday} de {activeHabits.length} hoy
+            </span>
+          )}
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {activeHabits.map((habit) => (
-            <HabitCard
-              key={habit.id}
-              habit={habit}
-              onToggleDay={onToggleHabitDay}
-            />
-          ))}
+        <div className="mt-4">
+          {activeHabits.length === 0 ? (
+            <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border p-5 text-muted-foreground">
+              <Flame className="size-5 shrink-0" />
+              <p className="text-sm">No hay hábitos. Creá uno para construir tu rutina ideal.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {activeHabits.map((habit) => (
+                <HabitCard
+                  key={habit.id}
+                  habit={habit}
+                  onToggleDay={onToggleHabitDay}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </div>

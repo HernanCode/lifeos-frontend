@@ -1,87 +1,89 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Plus, Target, Trophy } from 'lucide-react'
-import type { Goal } from '@/types'
+import { useRouter } from 'next/navigation'
+import { Plus, FolderKanban } from 'lucide-react'
+import type { Project } from '@/types'
 import { Button } from '@/components/ui/button'
-import { GoalCard } from '@/components/cards/goal-card'
-import { GoalModal } from '@/components/modals/goal-modal'
+import { ProjectCard } from '@/components/cards/project-card'
+import { ProjectModal } from '@/components/modals/project-modal'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SearchInput } from '@/components/ui/search-input'
 import { FilterBar } from '@/components/ui/filter-bar'
 import { Pagination } from '@/components/ui/pagination'
 import { useDashboard } from '@/components/dashboard-provider'
-import { GoalCardSkeleton, Skeleton } from '@/components/ui/skeleton'
+import { Skeleton } from '@/components/ui/skeleton'
 
-type StatusFilter = 'all' | 'active' | 'completed' | 'abandoned'
+type StatusFilter = 'all' | 'active' | 'paused' | 'completed' | 'archived'
 const PAGE_SIZE = 9
 
 const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
-  { label: 'Todas', value: 'all' },
-  { label: 'Activas', value: 'active' },
-  { label: 'Completadas', value: 'completed' },
-  { label: 'Abandonadas', value: 'abandoned' },
+  { label: 'Todos', value: 'all' },
+  { label: 'Activos', value: 'active' },
+  { label: 'Pausados', value: 'paused' },
+  { label: 'Completados', value: 'completed' },
+  { label: 'Archivados', value: 'archived' },
 ]
 
-export function GoalsView() {
-  const { goals, isLoadingGoals, deleteGoal } = useDashboard()
+export function ProjectsView() {
+  const { projects, isLoadingProjects, deleteProject } = useDashboard()
+  const router = useRouter()
   const [modalOpen, setModalOpen] = useState(false)
-  const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
-  const [deletingGoal, setDeletingGoal] = useState<Goal | null>(null)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [page, setPage] = useState(1)
 
   function openCreate() {
-    setEditingGoal(null)
+    setEditingProject(null)
     setModalOpen(true)
   }
 
-  function openEdit(goal: Goal) {
-    setEditingGoal(goal)
+  function openEdit(project: Project) {
+    setEditingProject(project)
     setModalOpen(true)
   }
 
   const filtered = useMemo(() => {
-    let result = goals
+    let result = projects
     if (statusFilter !== 'all') {
-      result = result.filter((g) => g.status === statusFilter)
+      result = result.filter((p) => p.status === statusFilter)
     }
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter(
-        (g) =>
-          g.title.toLowerCase().includes(q) ||
-          g.measurable?.toLowerCase().includes(q),
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q),
       )
     }
     return result
-  }, [goals, statusFilter, search])
+  }, [projects, statusFilter, search])
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  const completed = goals.filter((g) => g.status === 'completed').length
-  const avg = goals.length ? Math.round((completed / goals.length) * 100) : 0
+  const activeCount = projects.filter((p) => p.status === 'active').length
+  const completedCount = projects.filter((p) => p.status === 'completed').length
 
-  if (isLoadingGoals) {
+  if (isLoadingProjects) {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-extrabold tracking-tight">
-              Metas
+              Proyectos
             </h1>
             <p className="mt-1 text-muted-foreground">
-              Sigue las cosas que importan y mira cómo crece tu progreso.
+              Organiza tus tareas en proyectos para mantener el orden.
             </p>
           </div>
         </div>
-        <Skeleton className="h-24 w-full rounded-3xl bg-muted" />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <GoalCardSkeleton key={i} />
+            <Skeleton key={i} className="h-40 rounded-3xl" />
           ))}
         </div>
       </div>
@@ -93,37 +95,41 @@ export function GoalsView() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-extrabold tracking-tight">
-            Metas
+            Proyectos
           </h1>
           <p className="mt-1 text-muted-foreground">
-            Sigue las cosas que importan y mira cómo crece tu progreso.
+            Organiza tus tareas en proyectos para mantener el orden.
           </p>
         </div>
         <Button size="lg" className="h-10 rounded-xl px-4" onClick={openCreate}>
           <Plus className="size-4" />
-          Nueva meta
+          Nuevo proyecto
         </Button>
       </div>
 
-      <div className="flex items-center gap-4 rounded-3xl bg-gradient-to-br from-brand-orange to-brand-pink p-6 text-white">
+      <div className="flex items-center gap-4 rounded-3xl bg-gradient-to-br from-brand-blue to-brand-purple p-6 text-white">
         <div className="flex size-14 items-center justify-center rounded-2xl bg-white/20">
-          <Trophy className="size-7" />
+          <FolderKanban className="size-7" />
         </div>
-        <div>
-          <p className="text-sm font-medium text-white/85">
-            Completación general de metas
-          </p>
-          <p className="font-display text-3xl font-extrabold">{avg}%</p>
+        <div className="flex gap-6">
+          <div>
+            <p className="text-sm font-medium text-white/85">Activos</p>
+            <p className="font-display text-3xl font-extrabold">{activeCount}</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white/85">Completados</p>
+            <p className="font-display text-3xl font-extrabold">{completedCount}</p>
+          </div>
         </div>
       </div>
 
-      {goals.length === 0 ? (
+      {projects.length === 0 ? (
         <EmptyState
-          icon={Target}
-          title="No hay metas aún"
-          description="Definí tu primera meta SMART para empezar a medir tu progreso y alcanzar lo que importa."
+          icon={FolderKanban}
+          title="No hay proyectos aún"
+          description="Crea tu primer proyecto para organizar tus tareas y seguir tu progreso."
           action
-          actionLabel="Crear mi primera meta"
+          actionLabel="Crear mi primer proyecto"
           onAction={openCreate}
         />
       ) : (
@@ -132,7 +138,7 @@ export function GoalsView() {
             <SearchInput
               value={search}
               onChange={(v) => { setSearch(v); setPage(1) }}
-              placeholder="Buscar metas..."
+              placeholder="Buscar proyectos..."
               className="w-full sm:w-64"
             />
             <FilterBar
@@ -144,17 +150,18 @@ export function GoalsView() {
 
           {filtered.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              No se encontraron metas con esos filtros.
+              No se encontraron proyectos con esos filtros.
             </p>
           ) : (
             <>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {paginated.map((goal) => (
-                  <GoalCard
-                    key={goal.id}
-                    goal={goal}
+                {paginated.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
                     onEdit={openEdit}
-                    onDelete={setDeletingGoal}
+                    onDelete={setDeletingProject}
+                    onClick={(p) => router.push(`/projects/${p.id}`)}
                   />
                 ))}
               </div>
@@ -165,20 +172,20 @@ export function GoalsView() {
       )}
 
       {modalOpen && (
-        <GoalModal
-          key={editingGoal?.id ?? 'create'}
-          goal={editingGoal}
+        <ProjectModal
+          key={editingProject?.id ?? 'create'}
+          project={editingProject}
           onClose={() => setModalOpen(false)}
         />
       )}
 
       <ConfirmDialog
-        open={deletingGoal !== null}
-        onOpenChange={(open) => { if (!open) setDeletingGoal(null) }}
-        title="¿Eliminar meta?"
-        description={`Se eliminará permanentemente "${deletingGoal?.title ?? ''}". Esta acción no se puede deshacer.`}
-        confirmLabel="Eliminar meta"
-        onConfirm={() => deletingGoal ? deleteGoal(deletingGoal.id) : Promise.resolve()}
+        open={deletingProject !== null}
+        onOpenChange={(open) => { if (!open) setDeletingProject(null) }}
+        title="¿Eliminar proyecto?"
+        description={`Se eliminará permanentemente "${deletingProject?.name ?? ''}". Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar proyecto"
+        onConfirm={() => deletingProject ? deleteProject(deletingProject.id) : Promise.resolve()}
       />
     </div>
   )

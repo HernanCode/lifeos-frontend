@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Bot,
   Flag,
+  FolderKanban,
   LayoutDashboard,
   ListChecks,
   Repeat,
@@ -16,8 +17,9 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Inicio', icon: LayoutDashboard },
-  { href: '/goals', label: 'Metas', icon: Flag },
+  { href: '/projects', label: 'Proyectos', icon: FolderKanban },
   { href: '/tasks', label: 'Tareas', icon: ListChecks },
+  { href: '/goals', label: 'Metas', icon: Flag },
   { href: '/habits', label: 'Hábitos', icon: Repeat },
   { href: '/assistant', label: 'IA', icon: Bot },
   { href: '/settings', label: 'Ajustes', icon: Settings },

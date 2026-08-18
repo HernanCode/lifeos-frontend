@@ -1,31 +1,30 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus } from 'lucide-react'
-import type { Task } from '@/types'
-import { Button } from '@/components/ui/button'
-import { TaskItem } from '@/components/cards/task-item'
+import { useMemo, useState } from 'react'
+import { ClipboardList } from 'lucide-react'
 import { ProgressBar } from '@/components/progress-bar'
-import { TaskModal } from '@/components/modals/task-modal'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { TaskBoard } from '@/components/task-board'
 import { useDashboard } from '@/components/dashboard-provider'
-import { TaskItemSkeleton } from '@/components/ui/skeleton'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export function TasksView() {
-  const { tasks, isLoadingTasks, toggleTask, deleteTask } = useDashboard()
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editingTask, setEditingTask] = useState<Task | null>(null)
-  const [deletingTask, setDeletingTask] = useState<Task | null>(null)
+  const { tasks, isLoadingTasks, toggleTask, deleteTask, updateTask, projects } = useDashboard()
+  const [search, setSearch] = useState('')
+  const [projectFilter, setProjectFilter] = useState<string>('all')
 
-  function openCreate() {
-    setEditingTask(null)
-    setModalOpen(true)
-  }
+  const filteredTasks = useMemo(() => {
+    let result = tasks
+    if (projectFilter === 'none') {
+      result = result.filter((t) => !t.project_id)
+    } else if (projectFilter !== 'all') {
+      result = result.filter((t) => t.project_id === Number(projectFilter))
+    }
+    return result
+  }, [tasks, projectFilter])
 
-  function openEdit(task: Task) {
-    setEditingTask(task)
-    setModalOpen(true)
-  }
+  const done = tasks.filter((t) => t.status === 'done')
+  const active = tasks.filter((t) => t.status !== 'done')
+  const pct = tasks.length ? Math.round((done.length / tasks.length) * 100) : 0
 
   if (isLoadingTasks) {
     return (
@@ -42,23 +41,19 @@ export function TasksView() {
         </div>
         <div className="rounded-3xl border border-border bg-card p-5">
           <div className="flex items-center justify-between">
-            <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-            <div className="h-4 w-10 animate-pulse rounded bg-muted" />
+            <Skeleton className="h-4 w-32 rounded bg-muted" />
+            <Skeleton className="h-4 w-10 rounded bg-muted" />
           </div>
-          <div className="mt-3 h-2 w-full animate-pulse rounded-full bg-muted" />
+          <Skeleton className="mt-3 h-2 w-full rounded-full bg-muted" />
         </div>
         <div className="flex flex-col gap-2.5">
           {Array.from({ length: 5 }).map((_, i) => (
-            <TaskItemSkeleton key={i} />
+            <Skeleton key={i} className="h-16 rounded-2xl" />
           ))}
         </div>
       </div>
     )
   }
-
-  const done = tasks.filter((t) => t.status === 'done')
-  const active = tasks.filter((t) => t.status !== 'done')
-  const pct = tasks.length ? Math.round((done.length / tasks.length) * 100) : 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -71,10 +66,6 @@ export function TasksView() {
             Todo lo que tienes entre manos hoy, organizado y listo.
           </p>
         </div>
-        <Button size="lg" className="h-10 rounded-xl px-4" onClick={openCreate}>
-          <Plus className="size-4" />
-          Nueva tarea
-        </Button>
       </div>
 
       <div className="rounded-3xl border border-border bg-card p-5">
@@ -90,63 +81,31 @@ export function TasksView() {
         </p>
       </div>
 
-      <section>
-        <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">
-          Por hacer · {active.length}
-        </h2>
-        <div className="flex flex-col gap-2.5">
-          {active.length ? (
-            active.map((task) => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onToggle={toggleTask}
-                onEdit={openEdit}
-                onDelete={setDeletingTask}
-              />
-            ))
-          ) : (
-            <p className="rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              ¡Todo hecho por hoy. Increíble trabajo! 🎉
-            </p>
-          )}
-        </div>
-      </section>
-
-      {done.length > 0 && (
-        <section>
-          <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-wider text-muted-foreground">
-            Completadas · {done.length}
-          </h2>
-          <div className="flex flex-col gap-2.5">
-            {done.map((task) => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onToggle={toggleTask}
-                onEdit={openEdit}
-                onDelete={setDeletingTask}
-              />
+      <TaskBoard
+        tasks={filteredTasks}
+        isLoading={false}
+        search={search}
+        onSearchChange={setSearch}
+        onToggleTask={toggleTask}
+        onUpdateTask={updateTask}
+        onDeleteTask={deleteTask}
+        emptyIcon={ClipboardList}
+        emptyTitle="No hay tareas aún"
+        emptyDescription="Creá tu primera tarea para empezar a organizar tu día y mantener el impísin."
+        emptyActionLabel="Crear mi primera tarea"
+        extraFilters={
+          <select
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            className="h-10 rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-ring focus:ring-3 focus:ring-ring/20"
+          >
+            <option value="all">Todos los proyectos</option>
+            <option value="none">Sin proyecto</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
             ))}
-          </div>
-        </section>
-      )}
-
-      {modalOpen && (
-        <TaskModal
-          key={editingTask?.id ?? 'create'}
-          task={editingTask}
-          onClose={() => setModalOpen(false)}
-        />
-      )}
-
-      <ConfirmDialog
-        open={deletingTask !== null}
-        onOpenChange={(open) => { if (!open) setDeletingTask(null) }}
-        title="¿Eliminar tarea?"
-        description={`Se eliminará permanentemente "${deletingTask?.title ?? ''}". Esta acción no se puede deshacer.`}
-        confirmLabel="Eliminar tarea"
-        onConfirm={() => deletingTask ? deleteTask(deletingTask.id) : Promise.resolve()}
+          </select>
+        }
       />
     </div>
   )

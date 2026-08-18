@@ -5,9 +5,15 @@ import { Flame, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ACCENT_CLASSES } from '@/lib/app-data'
 import type { Habit } from '@/types'
-import { habitAccent, habitIcon, habitStreak, habitWeek } from '@/lib/habit-utils'
+import {
+  habitAccent,
+  habitFrequencyLabel,
+  habitIcon,
+  habitStreakLabel,
+  habitWeek,
+  habitWeekCompletedCount,
+} from '@/lib/habit-utils'
 import { Button } from '@/components/ui/button'
-import { ConsistencyHeatmap } from '@/components/cards/consistency-heatmap'
 
 const DAY_LABELS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
@@ -16,20 +22,31 @@ export function HabitCard({
   onToggleDay,
   onEdit,
   onDelete,
+  onClick,
 }: {
   habit: Habit
   onToggleDay: (id: number, dayIndex: number) => void
   onEdit?: (habit: Habit) => void
   onDelete?: (habit: Habit) => void
+  onClick?: (habit: Habit) => void
 }) {
   const accent = ACCENT_CLASSES[habitAccent(habit)]
   const icon = habitIcon(habit)
   const week = habitWeek(habit)
-  const streak = habitStreak(habit)
   const doneToday = week[6]
+  const isWeekly = habit.frequency === 'weekly'
+  const weekCount = isWeekly ? habitWeekCompletedCount(habit) : 0
+  const weekTarget = habit.target_count
+  const weekPct = isWeekly ? Math.min(100, Math.round((weekCount / weekTarget) * 100)) : 0
 
   return (
-    <div className="group rounded-3xl border border-border bg-card p-5 transition-all hover:shadow-lg hover:shadow-foreground/5">
+    <div
+      className={cn(
+        'group rounded-3xl border border-border bg-card p-5 transition-all hover:shadow-lg hover:shadow-foreground/5',
+        onClick && 'cursor-pointer',
+      )}
+      onClick={onClick ? () => onClick(habit) : undefined}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div
@@ -43,15 +60,18 @@ export function HabitCard({
           </div>
           <div>
             <p className="text-sm font-bold">{habit.title}</p>
+            <p className="text-xs text-muted-foreground">
+              {habitFrequencyLabel(habit)}
+            </p>
             <p className="flex items-center gap-1 text-xs font-medium text-brand-orange">
               <Flame className="size-3.5" fill="currentColor" />
-              {streak} días de racha
+              {habitStreakLabel(habit)}
             </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <button
-            onClick={() => onToggleDay(habit.id, 6)}
+            onClick={(e) => { e.stopPropagation(); onToggleDay(habit.id, 6) }}
             aria-pressed={doneToday}
             aria-label={doneToday ? 'Deshacer hoy' : 'Marcar hecho hoy'}
             className={cn(
@@ -69,7 +89,7 @@ export function HabitCard({
                 variant="ghost"
                 size="icon-sm"
                 aria-label="Editar hábito"
-                onClick={() => onEdit(habit)}
+                onClick={(e) => { e.stopPropagation(); onEdit(habit) }}
               >
                 <Pencil />
               </Button>
@@ -78,7 +98,7 @@ export function HabitCard({
                 size="icon-sm"
                 aria-label="Eliminar hábito"
                 className="text-destructive hover:text-destructive"
-                onClick={() => onDelete(habit)}
+                onClick={(e) => { e.stopPropagation(); onDelete(habit) }}
               >
                 <Trash2 />
               </Button>
@@ -87,11 +107,30 @@ export function HabitCard({
         </div>
       </div>
 
+      {isWeekly && (
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">
+              esta semana
+            </span>
+            <span className={cn('font-semibold', accent.text)}>
+              {weekCount}/{weekTarget}
+            </span>
+          </div>
+          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn('h-full rounded-full transition-all', accent.bar)}
+              style={{ width: `${weekPct}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 flex items-center justify-between gap-1.5">
         {week.map((done, i) => (
           <button
             key={i}
-            onClick={() => onToggleDay(habit.id, i)}
+            onClick={(e) => { e.stopPropagation(); onToggleDay(habit.id, i) }}
             aria-label={`${DAY_LABELS[i]} ${done ? 'completado' : 'no completado'}`}
             className="flex flex-1 flex-col items-center gap-1.5"
           >
@@ -107,10 +146,6 @@ export function HabitCard({
             </span>
           </button>
         ))}
-      </div>
-
-      <div className="mt-4 border-t border-border pt-4">
-        <ConsistencyHeatmap habit={habit} />
       </div>
     </div>
   )

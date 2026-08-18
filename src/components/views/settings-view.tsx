@@ -2,20 +2,31 @@
 
 import { Bell, Moon, Palette, ShieldCheck, User } from 'lucide-react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { ACCENT_CLASSES, type Accent } from '@/lib/app-data'
 import { initials, useCurrentUser } from '@/lib/user-utils'
+import { useThemeStore } from '@/store/theme-store'
+import useAuthStore from '@/store/authStore'
+import { userService } from '@/lib/services/userService'
 
 function Toggle({
   label,
   desc,
+  checked,
+  onCheckedChange,
   defaultOn = false,
 }: {
   label: string
   desc: string
+  checked?: boolean
+  onCheckedChange?: (on: boolean) => void
   defaultOn?: boolean
 }) {
-  const [on, setOn] = useState(defaultOn)
+  const [internal, setInternal] = useState(defaultOn)
+  const isOn = checked ?? internal
+  const toggle = onCheckedChange ?? ((v: boolean) => setInternal(v))
+
   return (
     <div className="flex items-center justify-between gap-4 py-3">
       <div>
@@ -24,18 +35,18 @@ function Toggle({
       </div>
       <button
         role="switch"
-        aria-checked={on}
+        aria-checked={isOn}
         aria-label={label}
-        onClick={() => setOn((v) => !v)}
+        onClick={() => toggle(!isOn)}
         className={cn(
           'relative h-6 w-11 shrink-0 rounded-full transition-colors',
-          on ? 'bg-primary' : 'bg-muted',
+          isOn ? 'bg-primary' : 'bg-muted',
         )}
       >
         <span
           className={cn(
             'absolute top-0.5 size-5 rounded-full bg-white shadow transition-all',
-            on ? 'left-[22px]' : 'left-0.5',
+            isOn ? 'left-[22px]' : 'left-0.5',
           )}
         />
       </button>
@@ -46,9 +57,31 @@ function Toggle({
 const ACCENTS: Accent[] = ['purple', 'blue', 'green', 'orange', 'pink']
 
 export function SettingsView() {
-  const [accent, setAccent] = useState<Accent>('purple')
   const user = useCurrentUser()
-  const displayName = user?.name ?? ''
+  const setAuth = useAuthStore((s) => s.setAuth)
+  const token = useAuthStore((s) => s.token)
+
+  const [name, setName] = useState(user?.name ?? '')
+  const [saving, setSaving] = useState(false)
+
+  const accent = useThemeStore((s) => s.accent)
+  const setAccent = useThemeStore((s) => s.setAccent)
+  const darkMode = useThemeStore((s) => s.darkMode)
+  const toggleDarkMode = useThemeStore((s) => s.toggleDarkMode)
+
+  async function saveName() {
+    if (!name.trim() || name.trim() === user?.name) return
+    setSaving(true)
+    try {
+      const updated = await userService.updateProfile({ name: name.trim() })
+      if (token) setAuth(updated, token)
+      toast.success('Nombre actualizado')
+    } catch {
+      toast.error('No se pudo actualizar el nombre')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -82,11 +115,22 @@ export function SettingsView() {
             <label className="text-xs font-semibold text-muted-foreground">
               Nombre para mostrar
               <input
-                readOnly
-                value={displayName}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={saveName}
+                onKeyDown={(e) => { if (e.key === 'Enter') saveName() }}
                 className="mt-1.5 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/20"
               />
             </label>
+            {name.trim() && name.trim() !== user?.name && (
+              <button
+                onClick={saveName}
+                disabled={saving}
+                className="h-9 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:opacity-50"
+              >
+                {saving ? 'Guardando...' : 'Guardar nombre'}
+              </button>
+            )}
           </div>
         </section>
 
@@ -118,6 +162,8 @@ export function SettingsView() {
             <Toggle
               label="Modo oscuro"
               desc="Más cómodo para los ojos por la noche."
+              checked={darkMode}
+              onCheckedChange={toggleDarkMode}
             />
             <Toggle
               label="Reducir movimiento"

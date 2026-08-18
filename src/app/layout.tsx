@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/app/providers'
+import { ThemeProvider } from '@/components/theme-provider'
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -26,9 +27,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className={`light ${plusJakarta.variable}`}>
+    <html lang="es" className={`light ${plusJakarta.variable}`} suppressHydrationWarning>
       <body className="bg-background font-sans antialiased">
-        <Providers>{children}</Providers>
+        <Providers>
+          <ThemeProvider>{children}</ThemeProvider>
+        </Providers>
       </body>
     </html>
   )
